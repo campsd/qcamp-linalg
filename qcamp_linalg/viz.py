@@ -4,8 +4,8 @@ import numpy as np
 import numpy.typing as npt
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
-from copy import deepcopy
-from .util import compute_norm
+from scipy.linalg import expm, logm
+from .util import compute_norm, _transform_to_matrix
 from typing import Union, Callable
 
 
@@ -250,7 +250,8 @@ def circle_cloud(ntheta: int):
 def animate(
     linear_transformation: Union[npt.ArrayLike, Callable],
     vectors: Union[npt.ArrayLike, None] = None,
-    pointcloud: Union[npt.ArrayLike, None] = None
+    pointcloud: Union[npt.ArrayLike, None] = None,
+    unitary: bool = False
 ):
     """Animate how a linear transformation changes a (set of) vector(s) and/or
     a cloud of points in the plane.
@@ -265,7 +266,9 @@ def animate(
       pointcloud (structured array):
         cloud of points to be animated: 'xy' list of coordinates, 'color' list
         of rgb colors.
-
+      unitary (boolean):
+        true or false - determines the interpolation method from just linear
+        interpolation if false, to an interpolation that preserves the norm.
     Returns
     -----
       animation object.
@@ -289,24 +292,16 @@ def animate(
         plt.show()
         return None
 
-    # compute final images
-    if vectors is not None:
-        if callable(linear_transformation):
-            vectors_image = np.array([
-               linear_transformation(v) for v in vectors]
-            )
-        else:  # matrix
-            vectors_image = (linear_transformation@np.array(vectors).T).T
+    # convert to matrix representation
+    if callable(linear_transformation):
+        linear_transformation = _transform_to_matrix(linear_transformation)
 
-    if pointcloud is not None:
-        pointcloud_image = deepcopy(pointcloud)
-        if callable(linear_transformation):
-            pointcloud_image['xy'] = np.array(
-              [linear_transformation(p) for p in pointcloud['xy']]
-            )
-        else:  # matrix
-            pointcloud_image['xy'] = \
-              (linear_transformation@pointcloud['xy'].T).T
+    log_mat = logm(linear_transformation)
+
+    def _interpolate(mat, t, unitary=False):
+        if unitary:
+            return expm(t*log_mat)
+        return (1 - t) * np.eye(2) + t * mat  # linear interpolation
 
     def init():
         return []
@@ -314,24 +309,24 @@ def animate(
     def _animate(frame):
         ax.clear()
         cartesian_plane(ax, nx, ny)
-        progress = frame / frames
+        progress = frame / (frames - 1)
+        current_mat = _interpolate(linear_transformation, progress, unitary)
         if vectors is not None:
             if frame == 0:
                 for v in vectors:
                     vector(ax, v, draw_arrow=True, annotate=1)
             elif frame == frames - 1:
-                for v, vv in zip(vectors, vectors_image):
+                vectors_current = (current_mat @ vectors.T).T
+                for v, vv in zip(vectors, vectors_current):
                     vector(ax, v, draw_arrow=True, annotate=1, alpha=0.2)
                     vector(ax, vv, draw_arrow=True, annotate=1)
             else:
-                vectors_current = (1 - progress) * vectors + \
-                  progress * vectors_image
+                vectors_current = (current_mat @ vectors.T).T
                 for v, vv in zip(vectors, vectors_current):
                     vector(ax, v, draw_arrow=True, annotate=1, alpha=0.2)
                     vector(ax, vv, draw_arrow=True, annotate=False)
         if pointcloud is not None:
-            pointcloud_current = (1 - progress) * pointcloud['xy'] + \
-              progress * pointcloud_image['xy']
+            pointcloud_current = (current_mat @ pointcloud['xy'].T).T
             ax.scatter(
               pointcloud_current[:, 0], pointcloud_current[:, 1],
               s=36, c=pointcloud['color'], edgecolor="none"
