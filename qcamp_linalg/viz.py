@@ -341,7 +341,8 @@ def animate(
 
 
 def bloch_circle(
-        state: npt.ArrayLike, gate: Union[npt.ArrayLike, None] = None
+        state: Union[npt.ArrayLike, None] = None,
+        gate: Union[npt.ArrayLike, None] = None
 ):
     """
     Visualize a vector/state both in cartesian plane and Bloch circle. The
@@ -352,21 +353,21 @@ def bloch_circle(
     Args
     ----
       state (array):
-        normalized qubit state
+        normalized qubit state (optional)
       gate (array)
-        2 x 2 quantum gate
+        2 x 2 quantum gate (optional)
     """
+    if state is not None:
+        # cast to NumPy
+        state = np.array(state, dtype=np.float64)
 
-    # cast to NumPy
-    state = np.array(state, dtype=np.float64)
-
-    if gate is not None:
-        state = gate@state
-    # validate state
-    assert np.abs(compute_norm(state) - 1.0) < 1e-10
-    phase = -1.0 if state[1] < 0 else 1.0
-    state = phase * state
-    state_color = (state[1], 0, np.abs(state[0]))
+        if gate is not None:
+            state = gate@state
+        # validate state
+        assert np.abs(compute_norm(state) - 1.0) < 1e-10
+        phase = -1.0 if state[1] < 0 else 1.0
+        state = phase * state
+        state_color = (state[1], 0, np.abs(state[0]))
 
     # generate figure
     fig, axes = plt.subplots(1, 2)
@@ -379,25 +380,19 @@ def bloch_circle(
     axes[0].scatter(
       np.cos(thetas), np.sin(thetas), s=18, c=colors, edgecolors="none"
     )
-    '''
-    0     (0, 0, 1)
-    pi/4  (0.5, 0, 0.5)
-    pi/2  (1, 0, 0)
-    3pi/4 (0.5, 0, 0.5)
-    pi    (0, 0, 1)
-    '''
     # plot the state
-    if phase < 0:
+    if state is not None:
+        if phase < 0:
+            axes[0].arrow(
+              0, 0, phase*state[0]*0.85,
+              phase*state[1]*0.85, head_width=0.15, head_length=0.15,
+              overhang=0.2, facecolor='black', edgecolor='black', alpha=0.2
+            )
         axes[0].arrow(
-          0, 0, phase*state[0]*0.85,
-          phase*state[1]*0.85, head_width=0.15, head_length=0.15, overhang=0.2,
-          facecolor='black', edgecolor='black', alpha=0.2
+          0, 0, state[0]*0.85,
+          np.abs(state[1])*0.85, head_width=0.15, head_length=0.15,
+          overhang=0.2, facecolor=state_color, edgecolor=state_color
         )
-    axes[0].arrow(
-        0, 0, state[0]*0.85,
-        np.abs(state[1])*0.85, head_width=0.15, head_length=0.15, overhang=0.2,
-        facecolor=state_color, edgecolor=state_color
-    )
 
     axes[0].set_xlim(-1.5, 1.5)
     axes[0].set_ylim(-1.5, 1.5)
@@ -426,12 +421,14 @@ def bloch_circle(
         edgecolors="none"
     )
     # plot state
-    state_angle = np.arctan2(state[1], state[0])
-    axes[1].arrow(
-        0, 0, np.cos(2*state_angle+np.pi/2)*0.85,
-        np.sin(2*state_angle+np.pi/2)*0.85, head_width=0.15, head_length=0.15,
-        overhang=0.2, facecolor=state_color, edgecolor=state_color
-    )
+    if state is not None:
+        state_angle = np.arctan2(state[1], state[0])
+        axes[1].arrow(
+          0, 0, np.cos(2*state_angle+np.pi/2)*0.85,
+          np.sin(2*state_angle+np.pi/2)*0.85, head_width=0.15,
+          head_length=0.15, overhang=0.2, facecolor=state_color,
+          edgecolor=state_color
+        )
 
     axes[1].set_title("Bloch circle", {'fontsize': 16})
     axes[1].set_xticks(np.arange(-2, 3, 1))
