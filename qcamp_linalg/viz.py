@@ -394,6 +394,12 @@ def bloch_circle(
           overhang=0.2, facecolor=state_color, edgecolor=state_color
         )
 
+    axes[0].annotate(
+        "|+>", (0.75, 0.75), horizontalalignment="left", color=(0.5, 0, 0.5)
+    )
+    axes[0].annotate(
+        "|->", (-0.75, 0.75), horizontalalignment="right", color=(0.5, 0, 0.5)
+    )
     axes[0].set_xlim(-1.5, 1.5)
     axes[0].set_ylim(-1.5, 1.5)
     axes[0].set_title("Cartesian plane", {'fontsize': 16})
@@ -429,7 +435,12 @@ def bloch_circle(
           head_length=0.15, overhang=0.2, facecolor=state_color,
           edgecolor=state_color
         )
-
+    axes[1].annotate(
+        "|+>", (-1.1, 0), horizontalalignment="right", color=(0.5, 0, 0.5)
+    )
+    axes[1].annotate(
+        "|->", (1.1, 0), horizontalalignment="left", color=(0.5, 0, 0.5)
+    )
     axes[1].set_title("Bloch circle", {'fontsize': 16})
     axes[1].set_xticks(np.arange(-2, 3, 1))
     axes[1].set_yticks(np.arange(-2, 3, 1))
@@ -438,5 +449,3 @@ def bloch_circle(
     axes[1].grid(alpha=0.25)
     axes[1].set_aspect('equal', adjustable='box')
     plt.show()
-
-# TODO cast to numpy for students
